@@ -8,15 +8,15 @@ framework   : io2012        # {io2012, html5slides, shower, dzslides, ...}
 highlighter : highlight.js  # {highlight.js, prettify, highlight}
 hitheme     : tomorrow      # 
 url:
-  lib: ../../librariesNew
+  lib: ../../libraries
   assets: ../../assets
 widgets     : [mathjax]            # {mathjax, quiz, bootstrap}
 mode        : selfcontained # {standalone, draft}
 ---
-
-
-
 ## A famous motivating example
+
+
+
 
 <img class=center src=fig/galton.jpg height=150>
 
@@ -27,24 +27,6 @@ mode        : selfcontained # {standalone, draft}
 [http://www.nature.com/ejhg/journal/v17/n8/full/ejhg20095a.html](http://www.nature.com/ejhg/journal/v17/n8/full/ejhg20095a.html)
 
 [Predicting height: the Victorian approach beats modern genomics](http://www.wired.com/wiredscience/2009/03/predicting-height-the-victorian-approach-beats-modern-genomics/)
-
----
-## Recent simply statistics post
-(Simply Statistics is a blog by Jeff Leek, Roger Peng and 
-Rafael Irizarry, who wrote this post, link on the image)
-
-<a href="http://simplystatistics.org/2013/01/28/data-supports-claim-that-if-kobe-stops-ball-hogging-the-lakers-will-win-more/">
-<img class=center src=http://simplystatistics.org/wp-content/uploads/2013/01/kobelakers1-1024x1024.png height=250></img>
-</a>
-
-- "Data supports claim that if Kobe stops ball hogging the Lakers will win more"
-- "Linear regression suggests that an increase of 1% in % of shots taken by Kobe results in a drop of 1.16 points (+/- 0.22)  in score differential."
-- How was it done? Do you agree with the analysis? 
-
-
-
-
-
 
 ---
 ## Questions for this class
@@ -74,13 +56,14 @@ Rafael Irizarry, who wrote this post, link on the image)
   * Overplotting is an issue from discretization.
 
 ---
+## Code
+
 
 ```r
-library(UsingR); data(galton); library(reshape); long <- melt(galton)
-g <- ggplot(long, aes(x = value, fill = variable)) 
-g <- g + geom_histogram(colour = "black", binwidth=1) 
-g <- g + facet_grid(. ~ variable)
-g
+library(UsingR); data(galton)
+par(mfrow=c(1,2))
+hist(galton$child,col="blue",breaks=100)
+hist(galton$parent,col="blue",breaks=100)
 ```
 
 <div class="rimage center"><img src="fig/galton.png" title="plot of chunk galton" alt="plot of chunk galton" class="plot" /></div>
@@ -93,7 +76,7 @@ g
   * One definition, let $Y_i$ be the height of child $i$ for $i = 1, \ldots, n = 928$, then define the middle as the value of $\mu$
   that minimizes $$\sum_{i=1}^n (Y_i - \mu)^2$$
 * This is physical center of mass of the histrogram.
-* You might have guessed that the answer $\mu = \bar Y$.
+* You might have guessed that the answer $\mu = \bar X$.
 
 
 ---
@@ -103,29 +86,29 @@ g
 ```
 library(manipulate)
 myHist <- function(mu){
-    mse <- mean((galton$child - mu)^2)
-    g <- ggplot(galton, aes(x = child)) + geom_histogram(fill = "salmon", colour = "black", binwidth=1)
-    g <- g + geom_vline(xintercept = mu, size = 3)
-    g <- g + ggtitle(paste("mu = ", mu, ", MSE = ", round(mse, 2), sep = ""))
-    g
+  hist(galton$child,col="blue",breaks=100)
+  lines(c(mu, mu), c(0, 150),col="red",lwd=5)
+  mse <- mean((galton$child - mu)^2)
+  text(63, 150, paste("mu = ", mu))
+  text(63, 140, paste("MSE = ", round(mse, 2)))
 }
 manipulate(myHist(mu), mu = slider(62, 74, step = 0.5))
 ```
 
 ---
-## The least squares est. is the empirical mean
+## The least squares estimate is the empirical mean
 
 ```r
-g <- ggplot(galton, aes(x = child)) + geom_histogram(fill = "salmon", colour = "black", binwidth=1)
-g <- g + geom_vline(xintercept = mean(galton$child), size = 3)
-g
+  hist(galton$child,col="blue",breaks=100)
+  meanChild <- mean(galton$child)
+  lines(rep(meanChild,100),seq(0,150,length=100),col="red",lwd=5)
 ```
 
-<div class="rimage center"><img src="fig/unnamed-chunk-1.png" title="plot of chunk unnamed-chunk-1" alt="plot of chunk unnamed-chunk-1" class="plot" /></div>
+<div class="rimage center"><img src="fig/lsm.png" title="plot of chunk lsm" alt="plot of chunk lsm" class="plot" /></div>
 
 
 ---
-### The math (not required for the class) follows as:
+### The math follows as:
 $$ 
 \begin{align} 
 \sum_{i=1}^n (Y_i - \mu)^2 & = \
@@ -149,10 +132,10 @@ $$
 
 
 ```r
-ggplot(galton, aes(x = parent, y = child)) + geom_point()
+plot(galton$parent,galton$child,pch=19,col="blue")
 ```
 
-<div class="rimage center"><img src="fig/unnamed-chunk-2.png" title="plot of chunk unnamed-chunk-2" alt="plot of chunk unnamed-chunk-2" class="plot" /></div>
+<div class="rimage center"><img src="fig/unnamed-chunk-1.png" title="plot of chunk unnamed-chunk-1" alt="plot of chunk unnamed-chunk-1" class="plot" /></div>
 
 
 ---
@@ -173,28 +156,27 @@ of the points to the line
 and children's heights
 
 ---
-
-```r
-y <- galton$child - mean(galton$child)
-x <- galton$parent - mean(galton$parent)
-freqData <- as.data.frame(table(x, y))
-names(freqData) <- c("child", "parent", "freq")
-freqData$child <- as.numeric(as.character(freqData$child))
-freqData$parent <- as.numeric(as.character(freqData$parent))
+```
 myPlot <- function(beta){
-    g <- ggplot(filter(freqData, freq > 0), aes(x = parent, y = child))
-    g <- g  + scale_size(range = c(2, 20), guide = "none" )
-    g <- g + geom_point(colour="grey50", aes(size = freq+20, show_guide = FALSE))
-    g <- g + geom_point(aes(colour=freq, size = freq))
-    g <- g + scale_colour_gradient(low = "lightblue", high="white")                     
-    g <- g + geom_abline(intercept = 0, slope = beta, size = 3)
-    mse <- mean( (y - beta * x) ^2 )
-    g <- g + ggtitle(paste("beta = ", beta, "mse = ", round(mse, 3)))
-    g
+  y <- galton$child - mean(galton$child)
+  x <- galton$parent - mean(galton$parent)
+  freqData <- as.data.frame(table(x, y))
+  names(freqData) <- c("child", "parent", "freq")
+  plot(
+    as.numeric(as.vector(freqData$parent)), 
+    as.numeric(as.vector(freqData$child)),
+    pch = 21, col = "black", bg = "lightblue",
+    cex = .15 * freqData$freq, 
+    xlab = "parent", 
+    ylab = "child"
+    )
+  abline(0, beta, lwd = 3)
+  points(0, 0, cex = 2, pch = 19)
+  mse <- mean( (y - beta * x)^2 )
+  title(paste("beta = ", beta, "mse = ", round(mse, 3)))
 }
 manipulate(myPlot(beta), beta = slider(0.6, 1.2, step = 0.02))
 ```
-
 
 ---
 ## The solution 
@@ -217,6 +199,8 @@ I(parent - mean(parent))
 
 
 ---
-<div class="rimage center"><img src="fig/unnamed-chunk-5.png" title="plot of chunk unnamed-chunk-5" alt="plot of chunk unnamed-chunk-5" class="plot" /></div>
+## Visualizing the best fit line
+### Size of points are frequencies at that X, Y combination
+<div class="rimage center"><img src="fig/unnamed-chunk-3.png" title="plot of chunk unnamed-chunk-3" alt="plot of chunk unnamed-chunk-3" class="plot" /></div>
 
 
